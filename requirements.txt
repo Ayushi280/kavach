@@ -1,0 +1,18 @@
+# Kavach - Python dependencies
+# Install with:  pip install -r requirements.txt
+
+torch
+transformers
+faster-whisper
+fastapi
+uvicorn
+pandas
+python-multipart
+requests
+pydub
+gTTS
+edge-tts
+torchaudio
+onnxruntime==1.20.1
+onnx==1.20.1
+python-dotenv

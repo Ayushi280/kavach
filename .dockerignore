@@ -1,0 +1,35 @@
+# Don't ship these into the image - keeps it small and avoids leaking secrets
+
+# virtual envs (huge, and rebuilt inside the container anyway)
+venv/
+kavach/
+env/
+__pycache__/
+*.pyc
+
+# secrets - pass these at runtime via --env-file instead of baking them in
+.env
+.env.aws
+
+# local audio test files / generated outputs
+audio/
+*.mp3
+*.wav
+_chunk*
+_live*
+_deepfake*
+_audio*
+_guardian*
+
+# notebooks + data CSVs (not needed to RUN the API)
+*.ipynb
+DATA/
+*.csv
+
+# git
+.git/
+.gitignore
+
+# local detection log (real runtime data - starts empty on the server,
+# fills up live as real detections happen; don't ship your local test data)
+*.db
