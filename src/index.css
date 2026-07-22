@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    background-image:
+      radial-gradient(1200px 600px at 10% -10%, rgba(52, 211, 153, 0.08), transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, rgba(5, 150, 105, 0.06), transparent 60%);
+    background-attachment: fixed;
+  }
+
+  /* Monospace for numbers everywhere useful */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0A0E1A;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1E293B;
+    border-radius: 8px;
+    border: 2px solid #0A0E1A;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2A3654;
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .glass {
+    background: linear-gradient(180deg, rgba(20, 27, 45, 0.85) 0%, rgba(15, 22, 41, 0.7) 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid #1E293B;
+  }
+
+  .glass-hover {
+    @apply transition-colors duration-200;
+  }
+  .glass-hover:hover {
+    border-color: #2A3654;
+  }
+
+  .card {
+    @apply glass rounded-xl;
+  }
+
+  .eyebrow {
+    @apply uppercase tracking-[0.14em] text-[11px] font-medium text-ink-muted;
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(30, 41, 59, 0.35) 1px, transparent 1px),
+      linear-gradient(to right, rgba(30, 41, 59, 0.35) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  /* Focus ring across app */
+  :focus-visible {
+    outline: 2px solid #34D399;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
