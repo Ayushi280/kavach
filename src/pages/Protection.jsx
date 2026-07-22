@@ -78,7 +78,7 @@ export default function Protection() {
           // Auto-fire guardian voice once
           if (!voiceFiredRef.current) {
             voiceFiredRef.current = true
-            guardianVoice({ language: 'hi', tactics: r.tactics || { money_demand: true } })
+            guardianVoice({ language: r.language || 'hi', tactics: r.tactics || { money_demand: true } })
               .then((url) => { if (url) new Audio(url).play().catch(() => {}) })
               .catch(() => {})
           }
