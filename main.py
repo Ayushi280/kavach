@@ -15,6 +15,7 @@ Endpoints:
                         honesty note on what the "scammer" node represents)
 """
 
+import os
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -43,6 +44,12 @@ class Msg(BaseModel):
     user_id: str = "demo_victim"   # so a detection can open a risk window for this user
     latitude: float = None         # real device GPS, sent by the app (with permission)
     longitude: float = None
+    log_to_dashboard: bool = True  # the app's privacy toggle - False skips detection_log
+                                   # entirely (no row saved -> won't appear in /stats,
+                                   # /alerts, or /fraud-graph). Detection + protection
+                                   # (circuit breaker, family alert) still work either way -
+                                   # this ONLY controls whether the event is remembered
+                                   # for the dashboard/graph.
 
 
 class PaymentIntent(BaseModel):
@@ -75,8 +82,6 @@ def home():
 @app.post("/check")
 def check(msg: Msg):
     result = kavach.check_text(msg.text)
-    # If this is a confident scam, open a high-risk window for the user so the
-    # payment circuit breaker activates automatically - no manual toggle.
     if result["is_scam"] and result["scam_probability"] > 0.8:
         open_risk_session(msg.user_id,
                           reason="Scam detected in call/message",
@@ -84,33 +89,29 @@ def check(msg: Msg):
                           active_tactics=result["active_tactics"])
         result["risk_window_opened"] = True
 
-    # REAL persistence - every check becomes a row, feeding /stats, /alerts,
-    # and /fraud-graph with genuine data instead of mock numbers.
-    log_detection(msg.user_id, result["is_scam"], result["confidence"],
-                 result["active_tactics"],
-                 result["extracted_payment_details"]["upi_ids"],
-                 result["extracted_payment_details"]["account_numbers"],
-                 language="en", latitude=msg.latitude, longitude=msg.longitude)
+    if msg.log_to_dashboard:
+        log_detection(msg.user_id, result["is_scam"], result["confidence"],
+                     result["active_tactics"],
+                     result["extracted_payment_details"]["upi_ids"],
+                     result["extracted_payment_details"]["account_numbers"],
+                     language="en", latitude=msg.latitude, longitude=msg.longitude)
     return result
 
 
 # --- REAL: audio scam check (the phone app / live mic sends chunks here) ---
 @app.post("/check-audio")
 async def check_audio(file: UploadFile = File(...), user_id: str = "demo_victim",
-                       latitude: float = Form(None), longitude: float = Form(None)):
-    """The phone app records ~5s of mic audio and POSTs it here, along with the
-    device's GPS (latitude/longitude - the app must ask location permission
-    and send real coordinates; if it doesn't, these stay null and that
-    detection just won't show a pin on the Crime Map). Fast path: Whisper-only
-    transcription (no IndicConformer / no deepfake) so a phone chunk gets a
-    verdict quickly. Returns the same shape as /check (verdict, tactics,
-    progression, transcript) and arms the payment circuit breaker on a
-    confident scam - so the app's detection and money-blocking are one chain."""
+                       latitude: float = Form(None), longitude: float = Form(None),
+                       log_to_dashboard: bool = Form(True)):
     temp_path = f"_audio_chunk_{file.filename}"
     with open(temp_path, "wb") as f:
         f.write(await file.read())
 
-    result = kavach.check_audio(temp_path, use_indic_asr=False, include_deepfake=False)
+    try:
+        result = kavach.check_audio(temp_path, use_indic_asr=False, include_deepfake=False)
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
     if result["is_scam"] and result["scam_probability"] > 0.8:
         open_risk_session(user_id, reason="Scam detected in live call",
@@ -118,20 +119,18 @@ async def check_audio(file: UploadFile = File(...), user_id: str = "demo_victim"
                           active_tactics=result["active_tactics"])
         result["risk_window_opened"] = True
 
-    log_detection(user_id, result["is_scam"], result["confidence"],
-                 result["active_tactics"],
-                 result["extracted_payment_details"]["upi_ids"],
-                 result["extracted_payment_details"]["account_numbers"],
-                 language=result.get("language"), latitude=latitude, longitude=longitude)
+    if log_to_dashboard:
+        log_detection(user_id, result["is_scam"], result["confidence"],
+                     result["active_tactics"],
+                     result["extracted_payment_details"]["upi_ids"],
+                     result["extracted_payment_details"]["account_numbers"],
+                     language=result.get("language"), latitude=latitude, longitude=longitude)
     return result
 
 
 # --- REAL: payment circuit breaker - the money-stopping decision ---
 @app.post("/payment-intent")
 def payment_intent(intent: PaymentIntent):
-    """A UPI/payment app calls this BEFORE sending money. Returns ALLOW or
-    HOLD (with a cooldown) based on whether the user is in an active scam-risk
-    window. This is the real circuit breaker - driven by detection, not a toggle."""
     return evaluate_payment(intent.user_id, intent.amount,
                             intent.payee, intent.new_payee)
 
@@ -143,7 +142,6 @@ def risk_status(user_id: str):
 
 @app.post("/clear-risk/{user_id}")
 def clear_risk(user_id: str):
-    """Victim hung up / confirmed safe - close the risk window."""
     return clear_risk_session(user_id)
 
 
@@ -172,15 +170,14 @@ def honeypot_demo():
 # --- REAL: Deepfake/AI-voice detection (pre-trained model) ---
 @app.post("/deepfake-check")
 async def deepfake_check(file: UploadFile = File(...), max_chunks: int = 6):
-    """Upload an audio clip (short OR long - long recordings are auto-chunked
-    into ~10s pieces, since the underlying model was only trained on 2.5-13s
-    clips). max_chunks=6 by default (~first 60s) for a fast result; pass a
-    higher number (or omit by setting to 0 for "no cap") for full coverage -
-    slower, since CPU inference on each chunk takes real time."""
     temp_path = f"_deepfake_upload_{file.filename}"
     with open(temp_path, "wb") as f:
         f.write(await file.read())
-    chunks, summary = analyze_long_audio(temp_path, max_chunks=max_chunks or None)
+    try:
+        chunks, summary = analyze_long_audio(temp_path, max_chunks=max_chunks or None)
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
     return {"chunks": chunks, "summary": summary}
 
 
