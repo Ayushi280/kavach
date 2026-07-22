@@ -11,7 +11,11 @@ import { cn } from '@/lib/utils'
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 const DEMO_USER = 'demo_victim'
-const CHUNK_MS = 5000
+const CHUNK_MS = 12000  // 12s chunks: long enough for a full UPI/account number
+                        // to land inside ONE chunk (so passive capture works), and
+                        // longer audio also transcribes + language-detects more
+                        // accurately. Trade-off: the scam warning can be up to ~12s
+                        // behind - acceptable for a demo, tune down for faster alerts.
 
 const TACTIC_ICONS = { authority: Landmark, isolation: UserX, fear: Flame, money_demand: Banknote }
 
