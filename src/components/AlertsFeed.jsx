@@ -7,6 +7,15 @@ import { timeAgo, cn } from '@/lib/utils'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
 
+// Real backend sends location as {lat,lng} (or null); mock sent a city string.
+// Render safely either way so an object never reaches React as a child (#31).
+function fmtLocation(loc) {
+  if (!loc) return '—'
+  if (typeof loc === 'string') return loc
+  if (loc.lat != null && loc.lng != null) return `${loc.lat.toFixed(2)}, ${loc.lng.toFixed(2)}`
+  return '—'
+}
+
 // An alert counts as "live" if it arrived in the last 30 seconds
 function isLive(a) {
   return Date.now() - new Date(a.time).getTime() < 30000
@@ -93,7 +102,7 @@ export function AlertsFeed() {
                   </span>
 
                   <div className="ml-auto flex items-center gap-3 text-[11px] text-ink-muted font-mono">
-                    <span className="flex items-center gap-1"><MapPin size={10} /> {a.location}</span>
+                    <span className="flex items-center gap-1"><MapPin size={10} /> {fmtLocation(a.location)}</span>
                     <span className="hidden sm:flex items-center gap-1"><Languages size={10} /> {a.language}</span>
                     <span className="hidden sm:flex items-center gap-1"><Clock size={10} /> {timeAgo(a.time)}</span>
                     <ChevronRight

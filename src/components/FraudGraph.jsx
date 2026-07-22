@@ -283,7 +283,7 @@ export function FraudGraph() {
             Fraud Network Graph
           </h3>
           <div className="text-xs text-ink-muted mt-0.5">
-            {raw.nodes.length} nodes · {raw.links.length} edges · 3 active rings
+            {raw.nodes.length} nodes · {raw.links.length} edges
           </div>
         </div>
         <div className="flex items-center gap-2 text-[11px]">
