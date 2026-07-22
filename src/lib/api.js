@@ -52,7 +52,7 @@ const TACTIC_LABELS = {
   money_demand: 'Money-transfer demand',
 }
 
-function detectLanguage(text) {
+export function detectLanguage(text) {
   if (/[\u0900-\u097F]/.test(text)) return 'hi'
   if (/[\u0B80-\u0BFF]/.test(text)) return 'ta'
   if (/[\u0C00-\u0C7F]/.test(text)) return 'te'

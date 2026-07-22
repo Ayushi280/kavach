@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { familyAlert, guardianVoice, TACTIC_META } from '@/lib/api'
+import { familyAlert, guardianVoice, detectLanguage, TACTIC_META } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
@@ -78,7 +78,11 @@ export default function Protection() {
           // Auto-fire guardian voice once
           if (!voiceFiredRef.current) {
             voiceFiredRef.current = true
-            guardianVoice({ language: r.language || 'hi', tactics: r.tactics || { money_demand: true } })
+            // Derive the warning language from the transcript's SCRIPT (deterministic)
+            // rather than Whisper's flaky per-chunk language guess. Devanagari
+            // in the transcript => Hindi voice, etc. Falls back to backend value.
+            const voiceLang = detectLanguage(r.transcript || '') || r.language || 'hi'
+            guardianVoice({ language: voiceLang, tactics: r.tactics || { money_demand: true } })
               .then((url) => { if (url) new Audio(url).play().catch(() => {}) })
               .catch(() => {})
           }
