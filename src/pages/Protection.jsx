@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Mic, MicOff, ShieldCheck, AlertTriangle, PhoneCall,
+  Mic, MicOff, ShieldCheck, AlertTriangle, PhoneCall, X,
   Loader2, CheckCircle2, Volume2, Landmark, UserX, Flame, Banknote, CreditCard,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -38,6 +38,8 @@ export default function Protection() {
   const chunkTimerRef = useRef(null)
   const lastPositionRef = useRef(null)
   const voiceFiredRef = useRef(false)
+  const sessionIdRef = useRef(null)
+  const [alertDismissed, setAlertDismissed] = useState(false)
 
   // Watch GPS in background once page loads
   useEffect(() => {
@@ -59,6 +61,7 @@ export default function Protection() {
     const form = new FormData()
     form.append('file', blob, 'chunk.webm')
     form.append('log_to_dashboard', 'true')
+    if (sessionIdRef.current) form.append('session_id', sessionIdRef.current)
     const pos = lastPositionRef.current
     if (pos) {
       form.append('latitude', String(pos.lat))
@@ -116,6 +119,7 @@ export default function Protection() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
       voiceFiredRef.current = false
+      sessionIdRef.current = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()))
 
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
@@ -137,6 +141,7 @@ export default function Protection() {
       setDetectionId(null)
       setPhoneInput('')
       setPhoneSaved(false)
+      setAlertDismissed(false)
 
       chunkTimerRef.current = setInterval(() => {
         if (mr.state === 'recording') {
@@ -334,92 +339,79 @@ export default function Protection() {
         </motion.div>
       )}
 
-      {/* Full-screen scam overlay */}
+      {/* Compact, NON-blocking scam popup - sits in the corner so the mic
+          keeps listening and the tactic/evidence panels stay visible. Closes
+          on the X (mic keeps running) or when you Stop. */}
       <AnimatePresence>
-        {status === 'scam' && (
+        {status === 'scam' && !alertDismissed && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/90 backdrop-blur-md"
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 0.96 }}
+            className="fixed bottom-4 right-4 z-50 w-[340px] max-w-[calc(100vw-2rem)] card p-5 border-threat/60 shadow-glow-threat"
           >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              className="card p-8 max-w-sm w-full border-threat/50 shadow-glow-threat text-center"
+            <button
+              onClick={() => setAlertDismissed(true)}
+              aria-label="Dismiss"
+              className="absolute top-3 right-3 text-ink-muted hover:text-ink"
             >
-              <motion.div
-                animate={{ scale: [1, 1.08, 1] }}
-                transition={{ repeat: Infinity, duration: 1.4 }}
-                className="h-20 w-20 rounded-2xl bg-threat/20 border border-threat/50 flex items-center justify-center mx-auto mb-5 shadow-glow-threat"
-              >
-                <AlertTriangle size={38} className="text-threat" />
-              </motion.div>
+              <X size={16} />
+            </button>
 
-              <div className="text-2xl font-bold text-threat mb-2">SCAM CALL DETECTED</div>
-              <div className="text-sm text-ink-muted mb-1">
-                {Math.round(confidence * 100)}% confidence
+            <div className="flex items-center gap-2 mb-2">
+              <span className="relative h-2 w-2">
+                <span className="absolute inset-0 rounded-full bg-threat animate-pulse-dot" />
+                <span className="absolute inset-0 rounded-full bg-threat" />
+              </span>
+              <div className="text-base font-bold text-threat">SCAM CALL DETECTED</div>
+            </div>
+            <div className="text-[11px] text-ink-muted mb-3">
+              {Math.round(confidence * 100)}% confidence · still listening…
+            </div>
+
+            {activeTactics.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {activeTactics.map((t) => <Badge key={t} tone="red">{t}</Badge>)}
               </div>
-              <div className="text-xs text-ink-muted mb-5 leading-relaxed">
-                Digital-arrest pattern detected. Do not pay. Do not stay alone on this call.
+            )}
+
+            <Button
+              variant="cyan"
+              size="sm"
+              className="w-full mb-2"
+              onClick={handleCallFamily}
+              disabled={familySending || familySent}
+            >
+              {familySending
+                ? <><Loader2 size={14} className="animate-spin" /> Sending…</>
+                : familySent
+                  ? <><CheckCircle2 size={14} /> Family alerted ✓</>
+                  : <><PhoneCall size={14} /> Alert My Family</>}
+            </Button>
+
+            {/* Report caller number (typed off the phone screen) */}
+            {phoneSaved ? (
+              <div className="text-[11px] text-safe flex items-center gap-1.5 mt-1">
+                <CheckCircle2 size={12} /> Number reported to Cyber Cell ✓
               </div>
-
-              {activeTactics.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 justify-center mb-5">
-                  {activeTactics.map((t) => <Badge key={t} tone="red">{t}</Badge>)}
-                </div>
-              )}
-
-              <div className="space-y-3">
-                <Button
-                  variant="cyan"
-                  size="lg"
-                  className="w-full"
-                  onClick={handleCallFamily}
-                  disabled={familySending || familySent}
-                >
-                  {familySending
-                    ? <><Loader2 size={16} className="animate-spin" /> Sending alert…</>
-                    : familySent
-                      ? <><CheckCircle2 size={16} /> Family alerted ✓</>
-                      : <><PhoneCall size={16} /> Alert My Family</>}
+            ) : (
+              <div className="flex gap-1.5">
+                <input
+                  type="tel"
+                  value={phoneInput}
+                  onChange={(e) => setPhoneInput(e.target.value)}
+                  placeholder="Caller number"
+                  className="flex-1 min-w-0 bg-bg-deep/60 border border-border rounded-lg px-2.5 py-1.5 text-xs text-ink font-mono placeholder:text-ink-dim focus:outline-none focus:border-accent-cyan"
+                />
+                <Button variant="ghost" size="sm" onClick={handleReportPhone} disabled={!phoneInput.trim() || !detectionId}>
+                  Report
                 </Button>
-                <Button variant="danger" size="lg" className="w-full" onClick={stopProtection}>
-                  Stop & Dismiss
-                </Button>
               </div>
+            )}
 
-              {/* Report the caller's number to the Cyber Cell. The victim reads
-                  this off their own phone's call screen - Kavach can't detect it
-                  from audio, so it's typed in. */}
-              <div className="mt-5 pt-4 border-t border-border text-left">
-                <div className="text-[11px] text-ink-muted mb-2">
-                  What number is calling you? (from your phone screen) — sends it to the Cyber Cell
-                </div>
-                {phoneSaved ? (
-                  <div className="text-xs text-safe flex items-center gap-1.5">
-                    <CheckCircle2 size={13} /> Number reported to Cyber Cell ✓
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <input
-                      type="tel"
-                      value={phoneInput}
-                      onChange={(e) => setPhoneInput(e.target.value)}
-                      placeholder="+91 98XXXXXXXX"
-                      className="flex-1 bg-bg-deep/60 border border-border rounded-lg px-3 py-2 text-sm text-ink font-mono placeholder:text-ink-dim focus:outline-none focus:border-accent-cyan"
-                    />
-                    <Button variant="ghost" onClick={handleReportPhone} disabled={!phoneInput.trim() || !detectionId}>
-                      Report
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 text-[11px] text-ink-muted">
-                🔊 Guardian Voice warning has been played automatically
-              </div>
-            </motion.div>
+            <div className="mt-3 text-[10px] text-ink-muted">
+              🔊 Guardian Voice played · tap the mic to Stop
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

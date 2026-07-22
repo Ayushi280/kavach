@@ -27,8 +27,9 @@ from honeypot_agent import run_demo_conversation
 from deepfake_detector import detect_deepfake, analyze_long_audio
 from risk_session import (open_risk_session, get_risk_status,
                           clear_risk_session, evaluate_payment)
-from detection_log import (init_db, log_detection, get_stats, get_alerts,
-                           get_fraud_graph, generate_incident_report, set_scammer_phone)
+from detection_log import (init_db, log_detection, update_detection, get_stats,
+                           get_alerts, get_fraud_graph, generate_incident_report,
+                           set_scammer_phone)
 
 app = FastAPI(title="Kavach API")
 
@@ -38,6 +39,14 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"],
 
 kavach = KavachPipeline("model")   # loads MuRIL once at startup
 init_db()                          # creates kavach_detections.db if missing
+
+# In-memory live-call sessions. Keyed by a session_id the app generates once
+# per call (crypto.randomUUID on "Start Protection"). Each holds the running
+# transcript for that call + the single detection row id it maps to, so one
+# call = ONE incident that grows as more chunks arrive - instead of every 12s
+# chunk becoming its own disconnected row. Cleared when the call ends or the
+# server restarts (fine - this is live-call state, not durable data).
+_live_sessions = {}
 
 
 class Msg(BaseModel):
@@ -121,7 +130,8 @@ def check(msg: Msg):
 async def check_audio(file: UploadFile = File(...), user_id: str = "demo_victim",
                        latitude: float = Form(None), longitude: float = Form(None),
                        log_to_dashboard: bool = Form(True),
-                       scammer_phone: str = Form(None)):
+                       scammer_phone: str = Form(None),
+                       session_id: str = Form(None)):
     """The phone app records ~5s of mic audio and POSTs it here, along with the
     device's GPS (latitude/longitude - the app must ask location permission
     and send real coordinates; if it doesn't, these stay null and that
@@ -139,12 +149,33 @@ async def check_audio(file: UploadFile = File(...), user_id: str = "demo_victim"
         f.write(await file.read())
 
     try:
-        result = kavach.check_audio(temp_path, use_indic_asr=False, include_deepfake=False)
+        # Transcribe THIS chunk only (fast Whisper path).
+        chunk_result = kavach.check_audio(temp_path, use_indic_asr=False,
+                                          include_deepfake=False)
     finally:
-        # Privacy: the raw voice recording is deleted the instant we're done
-        # with it - it is never kept, stored, or reused beyond this request.
+        # Privacy: raw audio deleted the instant we're done with it.
         if os.path.exists(temp_path):
             os.remove(temp_path)
+
+    chunk_text = chunk_result.get("transcript", "")
+    language = chunk_result.get("language")
+
+    # --- SESSION ACCUMULATION ---
+    # If the app sent a session_id, build up the WHOLE call's transcript and
+    # run detection on all of it - so a UPI/account spoken in a late chunk is
+    # caught and attached to the same incident as the earlier tactics. Without
+    # a session_id we fall back to per-chunk behavior.
+    if session_id:
+        sess = _live_sessions.setdefault(session_id,
+                                         {"transcript": "", "detection_id": None})
+        sess["transcript"] = (sess["transcript"] + " " + chunk_text).strip()
+        text_to_check = sess["transcript"]
+    else:
+        text_to_check = chunk_text
+
+    result = kavach.check_text(text_to_check) if text_to_check else chunk_result
+    result["transcript"] = text_to_check
+    result["language"] = language
 
     if result["is_scam"] and result["scam_probability"] > 0.8:
         open_risk_session(user_id, reason="Scam detected in live call",
@@ -153,13 +184,30 @@ async def check_audio(file: UploadFile = File(...), user_id: str = "demo_victim"
         result["risk_window_opened"] = True
 
     if log_to_dashboard:
-        detection_id = log_detection(user_id, result["is_scam"], result["confidence"],
-                     result["active_tactics"],
-                     result["extracted_payment_details"]["upi_ids"],
-                     result["extracted_payment_details"]["account_numbers"],
-                     language=result.get("language"), latitude=latitude, longitude=longitude,
-                     scammer_phone=scammer_phone)
-        result["detection_id"] = detection_id
+        upis = result["extracted_payment_details"]["upi_ids"]
+        accts = result["extracted_payment_details"]["account_numbers"]
+        if session_id:
+            sess = _live_sessions[session_id]
+            if sess["detection_id"] is None:
+                # Create the single incident row for this call the first time
+                # it looks like a scam - avoids logging pure-safe chatter.
+                if result["is_scam"]:
+                    sess["detection_id"] = log_detection(
+                        user_id, True, result["confidence"], result["active_tactics"],
+                        upis, accts, language=language, latitude=latitude,
+                        longitude=longitude, scammer_phone=scammer_phone)
+            else:
+                # Update the same row as the call continues (tactics grow, and a
+                # later-spoken UPI/account now attaches to THIS incident).
+                update_detection(sess["detection_id"], result["is_scam"],
+                                 result["confidence"], result["active_tactics"],
+                                 upis, accts, language=language)
+            result["detection_id"] = sess["detection_id"]
+        else:
+            result["detection_id"] = log_detection(
+                user_id, result["is_scam"], result["confidence"],
+                result["active_tactics"], upis, accts, language=language,
+                latitude=latitude, longitude=longitude, scammer_phone=scammer_phone)
     return result
 
 

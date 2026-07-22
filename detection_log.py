@@ -87,6 +87,27 @@ def log_detection(user_id, is_scam, confidence=None, active_tactics=None,
                    # /report-phone/{id} later in the same call session
 
 
+def update_detection(detection_id, is_scam, confidence=None, active_tactics=None,
+                     upi_ids=None, account_numbers=None, language=None):
+    """Updates an existing detection row (used by the live-call session logic:
+    one incident per call, updated as more of the call is heard - so tactics
+    from early chunks and a UPI/account said in a later chunk all attach to the
+    SAME incident instead of scattering across many rows). Leaves scammer_phone
+    and location untouched (those were set at creation / via /report-phone)."""
+    conn = _connect()
+    conn.execute(
+        """UPDATE detections
+           SET is_scam=?, confidence=?, active_tactics=?, upi_ids=?,
+               account_numbers=?, language=?
+           WHERE id=?""",
+        (int(bool(is_scam)), confidence, json.dumps(active_tactics or []),
+         json.dumps(upi_ids or []), json.dumps(account_numbers or []),
+         language, detection_id),
+    )
+    conn.commit()
+    conn.close()
+
+
 def get_detection(detection_id):
     """Fetches one full row by id - used to build the incident report."""
     conn = _connect()
