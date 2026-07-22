@@ -1,31 +1,35 @@
 """
-Kavach - Scam-baiting Honeypot (LITE)
-=======================================
-This file has TWO separate pieces now - they are NOT the same risk level,
-so don't treat the file as one thing:
+Kavach - Passive Evidence Capture (mule-account intelligence)
+=============================================================
+NAMING NOTE: we deliberately do NOT call this a "honeypot" anymore. A honeypot
+implies an AI actively baiting/talking to the scammer. We do not do that, and
+claiming we do would be dishonest. What we actually do is PASSIVE: we listen to
+the call the victim is already on (on speaker) and capture the payment details
+the scammer says anyway.
 
-1. extract_payment_details() - LIVE, SAFE, actually wired into the real
-   pipeline (kavach_pipeline.check_text -> used by /check, /check-audio, and
-   the Speakerphone Companion). It never talks to anyone. It just reads the
-   transcript Kavach is ALREADY hearing (the victim's real call, on speaker,
-   same mic we already legally listen through) and pulls out any UPI ID /
-   account number the scammer says out loud. That's it - pure pattern
-   matching on text we already have, no new audio, no impersonation, no
-   consent issue beyond what Speakerphone Companion already has. This is
-   what makes the "honeypot" idea real instead of a toy: the app doesn't
-   need the victim to do anything, and it doesn't need to fake a
-   conversation - scammers say their own payment details unprompted, we just
-   have to be listening and grab them, then hand them to Family Alert / a
-   future cyber-cell report as real evidence.
+This file has TWO separate pieces - NOT the same risk level:
+
+1. extract_payment_details() - LIVE, SAFE, wired into the real pipeline
+   (kavach_pipeline.check_text -> used by /check, /check-audio, and the
+   Speakerphone Companion). It never talks to anyone. It reads the transcript
+   Kavach is ALREADY hearing and pulls out any UPI ID / account number the
+   scammer says out loud - pure pattern matching on text we already have. No
+   new audio, no impersonation, no baiting. Scammers always name a mule
+   account (that's how they get paid), so if the user chooses to keep
+   listening, we capture it and hand it to Family Alert + the Cyber Cell map
+   as real evidence. This is the honest, buildable core.
+
+   IMPORTANT product truth: this competes with warning the victim early. If we
+   warn and they hang up, nothing is captured - and that's the RIGHT call.
+   Protecting the victim wins; capture is opportunistic best-effort on
+   whatever was already spoken. Describe it that way, never as "we extract the
+   scammer's account by baiting them."
 
 2. generate_honeypot_reply() / PERSONA_PROMPT / run_demo_conversation() -
-   STILL RESEARCH-DEMO ONLY, not wired into the live call. This is the AI
-   persona that WRITES fake stalling replies for the pitch demo screen (or a
-   judge to play with). It is not hooked up to speak to a real scammer live -
-   doing that would need real-time turn-taking and the app impersonating the
-   victim's voice with no human in the loop, which is a much bigger,
-   riskier build we deliberately did NOT take on. Keep using this only for
-   /honeypot-demo and the pitch.
+   RESEARCH-DEMO ONLY, NOT wired into the live call and NOT part of the
+   shipped product. Kept purely as a /honeypot-demo endpoint for the pitch to
+   illustrate the concept. It does not talk to any real scammer. If it adds
+   confusion, it can be dropped entirely without affecting the live app.
 """
 
 import os
