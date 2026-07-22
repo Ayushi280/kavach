@@ -106,15 +106,30 @@ DEMO_SCAMMER_LINES = [
 ]
 
 
+# What the victim naturally says while stalling - STATIC lines, no LLM call.
+# We deliberately do NOT use Gemini here: (1) it hits free-tier quota and dumps
+# ugly 429 errors into the demo, and (2) per our honesty stance, Kavach does
+# not use an AI to talk to scammers. In a real call the human victim is doing
+# the talking; Kavach just listens and captures. These lines simply illustrate
+# a victim keeping the caller talking long enough to reveal payment details.
+DEMO_VICTIM_LINES = [
+    "हाँ बेटा... मुझे ठीक से सुनाई नहीं दे रहा, ज़रा दोबारा बताइए?",
+    "अच्छा... मैं अपना चश्मा ढूंढ रही हूँ, एक मिनट रुकिए।",
+    "पैसे कैसे भेजूँ? मुझे तो ये सब चलाना नहीं आता... UPI क्या होता है?",
+    "अकाउंट नंबर लिख लिया... और कितने पैसे भेजने हैं?",
+]
+
+
 def run_demo_conversation():
-    """Scripted end-to-end demo: each line matches a realistic scam pattern
-    (from our own training data), the honeypot LLM replies in character, and
-    any payment details mentioned get extracted for the Fraud Graph."""
+    """Passive-capture demo (no LLM, no scammer interaction): shows realistic
+    scam lines and the UPI/account numbers Kavach extracts from them. The
+    'victim' replies are static illustrations of a person stalling - Kavach
+    itself never generates or speaks these to anyone."""
     transcript = []
     extracted_all = {"upi_ids": [], "account_numbers": []}
 
-    for scammer_line in DEMO_SCAMMER_LINES:
-        reply = generate_honeypot_reply(scammer_line)
+    for i, scammer_line in enumerate(DEMO_SCAMMER_LINES):
+        reply = DEMO_VICTIM_LINES[i % len(DEMO_VICTIM_LINES)]
         details = extract_payment_details(scammer_line)
         extracted_all["upi_ids"].extend(details["upi_ids"])
         extracted_all["account_numbers"].extend(details["account_numbers"])

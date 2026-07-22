@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Mic, MicOff, ShieldCheck, AlertTriangle, PhoneCall,
-  Loader2, CheckCircle2, Volume2, Landmark, UserX, Flame, Banknote,
+  Loader2, CheckCircle2, Volume2, Landmark, UserX, Flame, Banknote, CreditCard,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -25,6 +25,7 @@ export default function Protection() {
   const [familySent, setFamilySent] = useState(false)
   const [familySending, setFamilySending] = useState(false)
   const [chunks, setChunks] = useState(0)
+  const [captured, setCaptured] = useState({ upi_ids: [], account_numbers: [] })
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
   const chunkTimerRef = useRef(null)
@@ -62,6 +63,15 @@ export default function Protection() {
       .then((r) => {
         setChunks((c) => c + 1)
         setResult(r)
+        // Accumulate any mule-account details captured from the scammer's
+        // own words this chunk - deduped, so they persist on screen as the
+        // call goes on and feed the live Cyber Cell graph.
+        if (r.extracted_payment_details) {
+          setCaptured((prev) => ({
+            upi_ids: [...new Set([...prev.upi_ids, ...(r.extracted_payment_details.upi_ids || [])])],
+            account_numbers: [...new Set([...prev.account_numbers, ...(r.extracted_payment_details.account_numbers || [])])],
+          }))
+        }
         // Accumulate tactics — once lit, stay lit
         if (r.tactics) {
           setTactics((prev) => {
@@ -115,6 +125,7 @@ export default function Protection() {
       setFamilySent(false)
       setChunks(0)
       setResult(null)
+      setCaptured({ upi_ids: [], account_numbers: [] })
 
       chunkTimerRef.current = setInterval(() => {
         if (mr.state === 'recording') {
@@ -264,6 +275,43 @@ export default function Protection() {
               />
             </div>
           </div>
+        </motion.div>
+      )}
+
+      {/* Evidence captured live from the scammer's own words */}
+      {isListening && (captured.upi_ids.length > 0 || captured.account_numbers.length > 0) && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card p-5 mb-4 border-accent-cyan/30"
+        >
+          <div className="eyebrow mb-3 flex items-center gap-2">
+            <CreditCard size={12} className="text-accent-cyan" /> Evidence captured (sent to Cyber Cell)
+          </div>
+          {captured.upi_ids.length > 0 && (
+            <div className="mb-3">
+              <div className="text-[11px] text-ink-muted mb-1.5">UPI IDs the caller demanded</div>
+              <div className="flex flex-wrap gap-2">
+                {captured.upi_ids.map((u) => (
+                  <span key={u} className="px-2.5 py-1 rounded-md bg-threat/10 border border-threat/30 text-threat font-mono text-[11px]">
+                    {u}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {captured.account_numbers.length > 0 && (
+            <div>
+              <div className="text-[11px] text-ink-muted mb-1.5">Account numbers the caller demanded</div>
+              <div className="flex flex-wrap gap-2">
+                {captured.account_numbers.map((a) => (
+                  <span key={a} className="px-2.5 py-1 rounded-md bg-warn/10 border border-warn/30 text-warn font-mono text-[11px]">
+                    {a}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
 
