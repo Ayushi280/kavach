@@ -187,7 +187,7 @@ export async function checkMessage(text, userId = DEMO_USER) {
 
 export async function checkAudio(audioBlob, userId = DEMO_USER) {
   const form = new FormData()
-  form.append('audio', audioBlob)
+  form.append('file', audioBlob)
   form.append('user_id', userId)
   const coords = getCoords()
   if (coords) {
