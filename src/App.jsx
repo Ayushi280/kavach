@@ -6,10 +6,8 @@ import { NetworkBackground } from '@/components/NetworkBackground'
 import Landing from '@/pages/Landing'
 import Detector from '@/pages/Detector'
 import Dashboard from '@/pages/Dashboard'
-import CitizenApp from '@/pages/CitizenApp'
 import HowItWorks from '@/pages/HowItWorks'
 import Payment from '@/pages/Payment'
-import VictimFlow from '@/pages/VictimFlow'
 import Protection from '@/pages/Protection'
 
 export default function App() {
@@ -36,10 +34,8 @@ export default function App() {
               <Route path="/" element={<Landing />} />
               <Route path="/detector" element={<Detector />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/citizen" element={<CitizenApp />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/payment" element={<Payment />} />
-              <Route path="/victim" element={<VictimFlow />} />
               <Route path="/protection" element={<Protection />} />
             </Routes>
           </motion.div>

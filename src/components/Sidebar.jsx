@@ -10,9 +10,7 @@ const NAV = [
   { to: '/', label: 'Overview', icon: Shield, end: true },
   { to: '/protection', label: 'Live Protection', icon: Mic },
   { to: '/detector', label: 'Scam Detector', icon: Radar },
-  { to: '/victim', label: 'Victim Flow', icon: PhoneIncoming },
   { to: '/dashboard', label: 'Cyber Cell', icon: LayoutDashboard, badge: 'LIVE' },
-  { to: '/citizen', label: 'Citizen App', icon: Smartphone },
   { to: '/payment', label: 'Payment Guard', icon: IndianRupee },
   { to: '/how-it-works', label: 'How & Privacy', icon: Lock },
 ]

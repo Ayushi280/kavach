@@ -71,6 +71,11 @@ export default function Payment() {
           Detecting a scam in the Live Detector arms this circuit breaker — risky
           payments during the window are held automatically. No toggles, all real.
         </p>
+        <p className="mt-2 text-xs text-ink-muted/80 max-w-xl italic">
+          Concept: a bank / NPCI-level fraud hook. In production this decision engine
+          plugs in where UPI already shows fraud warnings — Kavach can't reach inside
+          GPay/PhonePe itself, and we don't claim to.
+        </p>
       </div>
 
       {/* Live risk-window banner */}

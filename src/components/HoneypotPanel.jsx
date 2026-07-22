@@ -21,13 +21,13 @@ export function HoneypotPanel() {
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <Bug size={14} className="text-accent-cyan" />
-            Honeypot Intelligence
+            Evidence Capture
           </h3>
           <div className="text-xs text-ink-muted mt-0.5">
-            Payment details extracted by baiting real scam scripts
+            Mule-account details the scammer reveals on the call — captured passively
           </div>
         </div>
-        <Badge tone="amber">Simulated</Badge>
+        <Badge tone="cyan">Passive capture</Badge>
       </div>
 
       {!data ? (
@@ -76,7 +76,7 @@ export function HoneypotPanel() {
             className="mt-4 text-xs text-ink-muted hover:text-ink flex items-center gap-1"
           >
             <ChevronDown size={12} className={cn('transition-transform', showTranscript && 'rotate-180')} />
-            {showTranscript ? 'Hide' : 'Show'} baiting transcript
+            {showTranscript ? 'Hide' : 'Show'} captured transcript
           </button>
 
           {showTranscript && (
@@ -91,7 +91,7 @@ export function HoneypotPanel() {
                     <span className="text-threat font-semibold">Scammer:</span> {t.scammer}
                   </div>
                   <div className="p-2 rounded-lg bg-surface/50 border border-border text-ink-muted">
-                    <span className="text-accent-cyan font-semibold">Honeypot:</span> {t.honeypot}
+                    <span className="text-accent-cyan font-semibold">Victim (kept listening):</span> {t.honeypot}
                   </div>
                 </div>
               ))}

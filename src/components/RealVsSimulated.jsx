@@ -2,14 +2,17 @@ import React from 'react'
 import { CheckCircle2, FlaskConical } from 'lucide-react'
 
 const ROWS = [
-  { feature: 'Scam detection model (MuRIL)', real: true, note: 'Live classification on every /check call' },
+  { feature: 'Scam detection model (MuRIL, 8 languages)', real: true, note: 'Live classification on GPU on every call' },
   { feature: 'Tactic decomposition + progression score', real: true, note: 'Computed per message by the backend' },
+  { feature: 'Live mic listening on speaker', real: true, note: 'Browser mic → 5s chunks → /check-audio' },
+  { feature: 'Mule-account (UPI / account) capture', real: true, note: 'Pulled from what the scammer says on the call' },
   { feature: 'Payment circuit breaker logic', real: true, note: 'Risk window armed by real detections' },
   { feature: 'Family alert (Telegram)', real: true, note: 'Actually sends a Telegram message' },
   { feature: 'Guardian Voice (TTS warning)', real: true, note: 'Real generated MP3 in the victim\'s language' },
-  { feature: 'The UPI payment app itself', real: false, note: 'Mock screen — no money moves' },
-  { feature: 'Dashboard stats & alerts feed', real: false, note: 'Representative data' },
-  { feature: 'Honeypot conversation', real: false, note: 'Scripted demonstration of the technique' },
+  { feature: 'Cyber Cell dashboard data', real: true, note: 'Grows from real detections logged in the DB' },
+  { feature: 'Blocking GPay / PhonePe directly', real: false, note: 'Concept — needs bank / NPCI-level integration' },
+  { feature: 'Catching the scammer\'s phone number', real: false, note: 'Not possible from call audio — user types it in' },
+  { feature: 'AI baiting the scammer live', real: false, note: 'Not built — we never talk to scammers. Capture is passive.' },
 ]
 
 export function RealVsSimulated() {

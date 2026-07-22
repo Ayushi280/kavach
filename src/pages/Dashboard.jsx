@@ -121,7 +121,7 @@ export default function Dashboard() {
         <HotspotList />
       </div>
 
-      {/* Honeypot intelligence */}
+      {/* Evidence capture (passive mule-account intel) */}
       <div className="grid lg:grid-cols-2 gap-4">
         <HoneypotPanel />
       </div>
