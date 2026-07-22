@@ -303,6 +303,14 @@ export async function getAlerts() {
   return data
 }
 
+export async function reportPhone(detectionId, phone) {
+  // Attach the caller's number (user-typed) to a detection so it reaches the
+  // Cyber Cell incident list. No-op in mock mode.
+  if (USE_MOCK) return { saved: true, mock: true }
+  const { data } = await client.post(`/report-phone/${detectionId}`, { scammer_phone: phone })
+  return data
+}
+
 export async function getStats() {
   if (USE_MOCK) {
     await new Promise((r) => setTimeout(r, 100))

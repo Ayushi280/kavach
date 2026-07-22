@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { familyAlert, guardianVoice, detectLanguage, TACTIC_META } from '@/lib/api'
+import { familyAlert, guardianVoice, reportPhone, detectLanguage, TACTIC_META } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
@@ -30,6 +30,9 @@ export default function Protection() {
   const [familySending, setFamilySending] = useState(false)
   const [chunks, setChunks] = useState(0)
   const [captured, setCaptured] = useState({ upi_ids: [], account_numbers: [] })
+  const [detectionId, setDetectionId] = useState(null)
+  const [phoneInput, setPhoneInput] = useState('')
+  const [phoneSaved, setPhoneSaved] = useState(false)
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
   const chunkTimerRef = useRef(null)
@@ -67,6 +70,7 @@ export default function Protection() {
       .then((r) => {
         setChunks((c) => c + 1)
         setResult(r)
+        if (r.detection_id) setDetectionId(r.detection_id)
         // Accumulate any mule-account details captured from the scammer's
         // own words this chunk - deduped, so they persist on screen as the
         // call goes on and feed the live Cyber Cell graph.
@@ -130,6 +134,9 @@ export default function Protection() {
       setChunks(0)
       setResult(null)
       setCaptured({ upi_ids: [], account_numbers: [] })
+      setDetectionId(null)
+      setPhoneInput('')
+      setPhoneSaved(false)
 
       chunkTimerRef.current = setInterval(() => {
         if (mr.state === 'recording') {
@@ -161,6 +168,14 @@ export default function Protection() {
       if (r?.sent) setFamilySent(true)
     } catch {}
     setFamilySending(false)
+  }
+
+  async function handleReportPhone() {
+    if (!phoneInput.trim() || !detectionId || phoneSaved) return
+    try {
+      await reportPhone(detectionId, phoneInput.trim())
+      setPhoneSaved(true)
+    } catch {}
   }
 
   const isListening = status === 'listening' || status === 'scam' || status === 'safe'
@@ -372,6 +387,33 @@ export default function Protection() {
                 <Button variant="danger" size="lg" className="w-full" onClick={stopProtection}>
                   Stop & Dismiss
                 </Button>
+              </div>
+
+              {/* Report the caller's number to the Cyber Cell. The victim reads
+                  this off their own phone's call screen - Kavach can't detect it
+                  from audio, so it's typed in. */}
+              <div className="mt-5 pt-4 border-t border-border text-left">
+                <div className="text-[11px] text-ink-muted mb-2">
+                  What number is calling you? (from your phone screen) — sends it to the Cyber Cell
+                </div>
+                {phoneSaved ? (
+                  <div className="text-xs text-safe flex items-center gap-1.5">
+                    <CheckCircle2 size={13} /> Number reported to Cyber Cell ✓
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="tel"
+                      value={phoneInput}
+                      onChange={(e) => setPhoneInput(e.target.value)}
+                      placeholder="+91 98XXXXXXXX"
+                      className="flex-1 bg-bg-deep/60 border border-border rounded-lg px-3 py-2 text-sm text-ink font-mono placeholder:text-ink-dim focus:outline-none focus:border-accent-cyan"
+                    />
+                    <Button variant="ghost" onClick={handleReportPhone} disabled={!phoneInput.trim() || !detectionId}>
+                      Report
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 text-[11px] text-ink-muted">

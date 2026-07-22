@@ -145,6 +145,8 @@ def get_alerts(limit=10):
                          if r["latitude"] is not None else None),
             "time": r["timestamp"],
             "scammer_phone": r["scammer_phone"],  # None unless the user entered it
+            "upi_ids": json.loads(r["upi_ids"] or "[]"),
+            "account_numbers": json.loads(r["account_numbers"] or "[]"),
         })
     return out
 
